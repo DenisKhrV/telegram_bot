@@ -41,33 +41,37 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
     public int process(List<Update> updates) {
         updates.forEach(update -> {
             logger.info("Processing update: {}", update);
-            Long chatId = update.message().chat().id();
-            if (update.message().text().equals("/start")) {
-                SendMessage message = new SendMessage(chatId, String.format("Привет, %s! Введите сообщение в формате 01.01.2022 20:00 Сделать домашнюю работу", update.message().from().firstName()));
-                telegramBot.execute(message);
-            }
-            Pattern pattern = Pattern.compile("([0-9\\.\\:\\s]{16})(\\s)([\\W+]+)");
-            Matcher matcher = pattern.matcher(update.message().text());
-            String date = null;
-            String item = null;
+            try {
+                Long chatId = update.message().chat().id();
 
-            if (matcher.matches()) {
-                date = matcher.group(1);
-                item = matcher.group(3);
-                logger.info("Date: {}, item: {}", date, item);
-            } else if (!update.message().text().equals("/start")){
-                SendMessage message = new SendMessage(chatId, "Сообщение введено некорректно. Введите сообщение в формате 01.01.2022 20:00 Сделать домашнюю работу");
-                telegramBot.execute(message);
-            }
+                if (update.message().text().equals("/start")) {
+                    SendMessage message = new SendMessage(chatId, String.format("Привет, %s! Введите сообщение в формате 01.01.2022 20:00 Сделать домашнюю работу", update.message().from().firstName()));
+                    telegramBot.execute(message);
+                }
+                Pattern pattern = Pattern.compile("([0-9\\.\\:\\s]{16})(\\s)([\\W+]+)");
+                Matcher matcher = pattern.matcher(update.message().text());
+                String date = null;
+                String item = null;
 
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
-            if (date != null) {
-                LocalDateTime dateTime = LocalDateTime.parse(date, formatter);
-                notificationTaskRepository.save(new NotificationTask(chatId, item, dateTime));
-                SendMessage message = new SendMessage(chatId, "Задача сохранена");
-                telegramBot.execute(message);
-            }
+                if (matcher.matches()) {
+                    date = matcher.group(1);
+                    item = matcher.group(3);
+                    logger.info("Date: {}, item: {}", date, item);
+                } else if (!update.message().text().equals("/start")) {
+                    SendMessage message = new SendMessage(chatId, "Сообщение введено некорректно. Введите сообщение в формате 01.01.2022 20:00 Сделать домашнюю работу");
+                    telegramBot.execute(message);
+                }
 
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+                if (date != null) {
+                    LocalDateTime dateTime = LocalDateTime.parse(date, formatter);
+                    notificationTaskRepository.save(new NotificationTask(chatId, item, dateTime));
+                    SendMessage message = new SendMessage(chatId, "Задача сохранена");
+                    telegramBot.execute(message);
+                }
+            } catch (NullPointerException e) {
+                System.out.println("Пользователь удалил чат");
+            }
         });
         return UpdatesListener.CONFIRMED_UPDATES_ALL;
     }
